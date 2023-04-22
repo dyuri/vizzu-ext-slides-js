@@ -266,37 +266,6 @@ class VizzuPlayer extends HTMLElement {
     return await this.vizzu.animate(step, options);
   }
 
-  // TODO proper exception handling to re-enable rendering and such
-  // TODO remove subslide concept
-  async _jump(cs, percent) {
-    return new Promise((resolve) =>
-      setTimeout(async () => {
-        this.log("jump to", cs, percent);
-        const subSlide = this._slides[cs];
-        const seek = () => this._seekTo(percent);
-
-        this.vizzu.feature("rendering", false);
-        // animate to previous slide
-        if (cs > 0) {
-          const prevSlide = this._slides[cs - 1];
-          const prevSubSlide = prevSlide[prevSlide.length - 1];
-          const seekToEnd = () => this._seekToEnd();
-          this.vizzu.on("animation-begin", seekToEnd);
-          await this.vizzu.animate(...prevSubSlide);
-          this.vizzu.off("animation-begin", seekToEnd);
-        }
-        this.vizzu.feature("rendering", true);
-
-        // jump to subSlide
-        this.vizzu.on("animation-begin", seek);
-        await this.vizzu.animate(...subSlide);
-        this.vizzu.off("animation-begin", seek);
-
-        resolve(this.vizzu);
-      }, 0)
-    );
-  }
-
   async _seekTo(percent) {
     return new Promise((resolve) =>
       setTimeout(() => {
@@ -351,11 +320,11 @@ class VizzuPlayer extends HTMLElement {
     }
   }
 
-  next() {
+  async next() {
     return this.setSlide(this.currentSlide + 1);
   }
 
-  previous() {
+  async previous() {
     return this.setSlide(this.currentSlide - 1);
   }
 
@@ -368,29 +337,13 @@ class VizzuPlayer extends HTMLElement {
   }
 
   async seek(percent) {
-    // TODO remove subslide concept
     if (this.acquireLock()) {
       this._update(this._state);
       this.log(
         `seek to ${percent}%, current: ${this._seekPosition}% [${this._currentSlide}]`
       );
-      const sspercent = 100 / this.slide.length;
-      let ss = Math.floor(percent / sspercent); // new subslide
-      let sp = (100 * (percent - ss * sspercent)) / sspercent; // new seek position
-      this.log(`ss ${ss}, sp ${sp}`);
-      if (ss >= this.slide.length) {
-        ss = this.slide.length - 1;
-        sp = 100;
-      }
-      if (ss !== this._subSlide) {
-        // need to change subslide
-        this._subSlide = ss;
-        await this._jump(this._currentSlide, this._subSlide, sp);
-      } else {
-        this.vizzu.animation.seek(`${sp}%`);
-      }
+      this.vizzu.animation.seek(`${percent}%`);
       this._seekPosition = percent;
-      this._subSeekPosition = sp;
       this.releaseLock();
     }
     this._update(this._state);

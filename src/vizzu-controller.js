@@ -11,6 +11,8 @@ class VizzuController extends HTMLElement {
     this.attachShadow({ mode: "open" });
     this.shadowRoot.innerHTML = this._render();
 
+    this._sliderUpdate = this.getAttribute("slider-update") || "change";
+
     this._update = this.update.bind(this);
     this._keyHandler = this._handleKey.bind(this);
 
@@ -29,6 +31,14 @@ class VizzuController extends HTMLElement {
         } else if (btn.id === "fullscreen") {
           this.fullscreen();
         }
+      }
+    });
+
+    this.shadowRoot.addEventListener(this._sliderUpdate, (e) => {
+      const slider = e.target.closest("input[type=range]");
+
+      if (slider) {
+        this.seek(slider.value / 10);
       }
     });
   }
@@ -58,12 +68,19 @@ class VizzuController extends HTMLElement {
     }
 
     this.shadowRoot.getElementById("status").innerHTML = this._html_status;
+    if (this.slider) {
+      this.slider.value = data.seekPosition * 10;
+    }
   }
 
   get _html_status() {
     return `<span class="current">${
       (this._state?.currentSlide || 0) + 1
     }</span>/<span class="length">${this._state?.length || "?"}</span>`;
+  }
+
+  get slider() {
+    return this.shadowRoot.getElementById("slider");
   }
 
   _unsubscribe(player) {
@@ -207,6 +224,7 @@ class VizzuController extends HTMLElement {
           --_c: var(--vizzu-button-color, #c6c6c6);
           --_bg: var(--vizzu-button-background-color, #fff);
           --_hc: var(--vizzu-button-hover-color, #494949);
+          --_hs: var(--vizzu-slider-hover, #009edb);
           color: var(--_c);
         }
         :host([first]) #start,
@@ -249,10 +267,38 @@ class VizzuController extends HTMLElement {
         #fullscreen {
           margin-right: 10px;
         }
-        #splaceholder {
+        #slider {
           flex: 1;
           max-width: 350px;
           min-width: 60px;
+          margin: 0 10px;
+          padding: 7px 0;
+          -webkit-appearance: none;
+          background: transparent;
+        }
+        #slider::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          border: 2px solid var(--_c);
+          border-radius: 50%;
+          width: 15px;
+          height: 15px;
+          background: var(--_bg);
+          cursor: pointer;
+          margin-top: -7px;
+        }
+        #slider::-webkit-slider-runnable-track {
+          -webkit-appearance: none;
+          width: 100%;
+          height: 2px;
+          cursor: pointer;
+          background: var(--_c);
+        }
+        #slider:focus::-webkit-slider-runnable-track,
+        #slider:hover::-webkit-slider-runnable-track,
+        #slider:focus::-webkit-slider-thumb,
+        #slider:hover::-webkit-slider-thumb {
+          border-color: var(--_hs);
+          background: var(--_hs);
         }
         [aria-label] {
           position: relative;
@@ -279,7 +325,7 @@ class VizzuController extends HTMLElement {
             <path id="play_pass" d="M13.000,15.000 L-0.000,8.000 L-0.000,7.000 L13.000,-0.000 L13.000,15.000 z" fill="#A2A2A2" />
           </svg>
         </button>
-        <div id="splaceholder"></div>
+        <input aria-label="Seek animation between slides" type="range" min="0" max="1000" id="slider"/>
         <button id="next" aria-label="Next">
           <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="13" height="15" viewBox="0 0 13 15">
             <path id="nextBtn" d="M-0.000,15.000 L13.000,8.000 L13.000,7.000 L-0.000,-0.000 L-0.000,15.000 z" fill="#A2A2A2" />
